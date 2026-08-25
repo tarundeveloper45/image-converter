@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Converter — JPG · PNG · WebP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0d;
+    --panel: #131317;
+    --panel-2: #1b1b21;
+    --panel-3: #202027;
+    --border: #26262d;
+    --border-soft: #1e1e24;
+    --text: #f3f3f5;
+    --text-dim: #8f8f9a;
+    --text-dimmer: #5f5f6a;
+    --accent-1: #6366f1;
+    --accent-2: #a855f7;
+    --accent: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    --accent-solid: #7c6cf0;
+    --good: #34d399;
+    --bad: #f87171;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  /* ---- Header ---- */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 22px; background: rgba(19,19,23,0.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-soft); flex-shrink: 0; z-index: 10;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 9px; background: var(--accent);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(124,108,240,0.35);
+  }
+  .brand-mark svg { width: 16px; height: 16px; stroke: #fff; }
+  .brand-text h1 { font-size: 14.5px; font-weight: 700; margin: 0; letter-spacing: -.1px; line-height: 1.3; }
+  .brand-text p { margin: 0; font-size: 11px; color: var(--text-dimmer); font-weight: 500; }
+
+  #newImageBtn {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    padding: 8px 15px; border-radius: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    display: none; align-items: center; gap: 7px; transition: background .15s, border-color .15s, transform .1s;
+    font-family: inherit;
+  }
+  #newImageBtn svg { width: 14px; height: 14px; }
+  #newImageBtn:hover { background: var(--panel-3); border-color: #34343d; }
+  #newImageBtn:active { transform: scale(0.97); }
+
+  main { flex: 1; display: flex; min-height: 0; position: relative; }
+
+  /* ---- Drop zone ---- */
+  #dropZone {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 18px; cursor: pointer;
+    border: 1.5px dashed var(--border); margin: 22px; border-radius: 20px;
+    transition: border-color .2s, background .2s, transform .2s;
+    background: radial-gradient(circle at 50% 30%, rgba(124,108,240,0.05), transparent 60%);
+    position: relative;
+  }
+  #dropZone.drag { border-color: var(--accent-solid); background: rgba(124,108,240,0.08); transform: scale(0.995); }
+  #dropZone.drag .drop-icon { transform: translateY(-4px) scale(1.05); }
+  .drop-icon {
+    width: 78px; height: 78px; border-radius: 22px; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(145deg, var(--panel-3), var(--panel-2)); border: 1px solid var(--border);
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+  }
+  .drop-icon svg { width: 32px; height: 32px; stroke: var(--accent-solid); }
+  #dropZone p { margin: 0; color: var(--text); font-size: 15px; text-align: center; font-weight: 600; }
+  #dropZone .hint { font-size: 12.5px; color: var(--text-dimmer); font-weight: 500; margin-top: -8px; }
+  .format-chips { display: flex; gap: 8px; margin-top: 4px; }
+  .format-chips span {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .4px; color: var(--text-dim);
+    background: var(--panel-2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px;
+  }
+  #fileInput { display: none; }
+
+  /* ---- Editor ---- */
+  #editor { flex: 1; display: none; min-height: 0; opacity: 0; transition: opacity .25s ease; }
+  #editor.active { display: flex; opacity: 1; }
+
+  #compareWrap {
+    flex: 1; position: relative; display: flex; align-items: center; justify-content: center;
+    background:
+      linear-gradient(45deg, #16161a 25%, transparent 25%),
+      linear-gradient(-45deg, #16161a 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #16161a 75%),
+      linear-gradient(-45deg, transparent 75%, #16161a 75%);
+    background-size: 22px 22px;
+    background-position: 0 0, 0 11px, 11px -11px, -11px 0px;
+    background-color: #0c0c0f;
+    overflow: hidden; padding: 30px;
+  }
+  #stage {
+    position: relative; max-width: 100%; max-height: 100%;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06), 0 20px 60px rgba(0,0,0,0.5);
+    border-radius: 4px; transition: transform .15s ease;
+  }
+  #stage img { display: block; max-width: 100%; max-height: 100%; user-select: none; -webkit-user-drag: none; }
+  #afterLayer {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    overflow: hidden;
+  }
+  #afterLayer img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; }
+  #beforeImg { object-fit: contain; width: 100%; height: 100%; }
+
+  #divider {
+    position: absolute; top: 0; bottom: 0; width: 0; cursor: ew-resize;
+    z-index: 5;
+  }
+  #divider::before {
+    content: ''; position: absolute; top: 0; bottom: 0; left: -1px; width: 2px;
+    background: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.7);
+  }
+  #handle {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 36px; height: 36px; border-radius: 50%; background: #fff;
+    display: flex; align-items: center; justify-content: center; gap: 2px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.55), 0 0 0 4px rgba(255,255,255,0.08);
+    transition: transform .12s ease;
+  }
+  #divider:hover #handle, #divider:active #handle { transform: translate(-50%, -50%) scale(1.08); }
+  #handle svg { width: 12px; height: 12px; }
+
+  .side-label {
+    position: absolute; top: 12px; padding: 4px 10px; font-size: 10.5px; font-weight: 700;
+    background: rgba(10,10,13,0.65); backdrop-filter: blur(4px); border-radius: 6px; letter-spacing: .5px;
+    pointer-events: none; z-index: 4; text-transform: uppercase; color: #e4e4e7;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  #labelBefore { left: 12px; }
+  #labelAfter { right: 12px; }
+
+  #zoomBar {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 4px; background: rgba(19,19,23,0.92);
+    backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 24px; padding: 5px; z-index: 6;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  #zoomBar button {
+    background: none; border: none; color: var(--text); cursor: pointer;
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; transition: background .12s;
+  }
+  #zoomBar button:hover { background: var(--panel-3); }
+  #zoomBar button svg { width: 14px; height: 14px; stroke: currentColor; }
+  #zoomBar span { font-size: 11.5px; color: var(--text-dim); width: 40px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* ---- Sidebar ---- */
+  #sidebar {
+    width: 300px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--border-soft);
+    padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px;
+  }
+  #sidebar::-webkit-scrollbar { width: 8px; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--panel-3); border-radius: 8px; }
+
+  #fileRow {
+    display: flex; align-items: center; gap: 10px; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px;
+  }
+  #fileRow svg { width: 16px; height: 16px; stroke: var(--text-dim); flex-shrink: 0; }
+  #fileNameText { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+
+  .panel-card {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .field label {
+    display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--text-dimmer); margin-bottom: 8px; font-weight: 700;
+  }
+  .select-wrap { position: relative; }
+  .select-wrap svg {
+    position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
+    width: 14px; height: 14px; stroke: var(--text-dim); pointer-events: none;
+  }
+  select {
+    width: 100%; background: var(--panel-3); color: var(--text); border: 1px solid var(--border);
+    padding: 10px 32px 10px 12px; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer;
+    appearance: none; font-family: inherit; transition: border-color .15s;
+  }
+  select:hover { border-color: #3a3a44; }
+  select:focus { outline: none; border-color: var(--accent-solid); }
+
+  .quality-row { display: flex; align-items: center; gap: 12px; }
+  input[type=range] {
+    flex: 1; -webkit-appearance: none; appearance: none; height: 5px; border-radius: 3px;
+    background: var(--panel-3); outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.4), 0 0 0 3px rgba(124,108,240,0.35);
+    transition: box-shadow .12s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.4), 0 0 0 5px rgba(124,108,240,0.45); }
+  input[type=range]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%; background: #fff; border: none; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4), 0 0 0 3px rgba(124,108,240,0.35);
+  }
+  .quality-val {
+    font-size: 12.5px; width: 32px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 700;
+    background: var(--panel-3); border-radius: 6px; padding: 3px 0; border: 1px solid var(--border);
+  }
+
+  #statsBox { padding: 4px 2px; gap: 10px; }
+  .stat-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-dim); font-weight: 500; }
+  .stat-row b { color: var(--text); font-weight: 700; font-size: 12.5px; }
+  .stat-divider { height: 1px; background: var(--border); margin: 2px 0; }
+  #pctBadge {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700;
+    padding: 7px 10px; border-radius: 8px; justify-content: center; margin-top: 2px;
+  }
+  #pctBadge.good { color: var(--good); background: rgba(52,211,153,0.1); }
+  #pctBadge.bad { color: var(--bad); background: rgba(248,113,113,0.1); }
+  #pctBadge svg { width: 13px; height: 13px; }
+
+  #downloadBtn {
+    background: var(--accent); color: #fff; border: none; padding: 13px; border-radius: 10px;
+    font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; gap: 8px; transition: filter .15s, transform .1s;
+    font-family: inherit; box-shadow: 0 6px 18px rgba(124,108,240,0.3);
+  }
+  #downloadBtn:hover:not(:disabled) { filter: brightness(1.1); }
+  #downloadBtn:active:not(:disabled) { transform: scale(0.98); }
+  #downloadBtn:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+  #downloadBtn svg { width: 16px; height: 16px; }
+
+  #spinner {
+    display: none; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); font-weight: 600;
+    justify-content: center;
+  }
+  #spinner.on { display: flex; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-solid); animation: pulse 1s infinite ease-in-out; }
+  .dot:nth-child(2) { animation-delay: .15s; }
+  .dot:nth-child(3) { animation-delay: .3s; }
+  @keyframes pulse { 0%,100% { opacity: .25; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1); } }
+
+  /* ---- Responsive ---- */
+  @media (max-width: 760px) {
+    #editor { flex-direction: column; }
+    #sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border-soft); }
+    #compareWrap { padding: 16px; min-height: 260px; }
+    .brand-text p { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l4.5-6 3.5 4.5 2.5-3L20 16"/><rect x="3" y="4" width="18" height="16" rx="2.5"/></svg>
+      </div>
+      <div class="brand-text">
+        <h1>Image Converter</h1>
+        <p>JPG · PNG · WebP — fully in your browser</p>
+      </div>
+    </div>
+    <button id="newImageBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      Upload new image
+    </button>
+  </header>
+
+  <main>
+    <div id="dropZone">
+      <div class="drop-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
+          <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
+        </svg>
+      </div>
+      <p>Drag & drop an image, or click to browse</p>
+      <p class="hint">Convert instantly between formats — nothing leaves your device</p>
+      <div class="format-chips"><span>JPG</span><span>PNG</span><span>WEBP</span></div>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div id="editor">
+      <div id="compareWrap">
+        <div id="stage">
+          <img id="beforeImg" alt="original">
+          <div id="afterLayer"><img id="afterImg" alt="converted"></div>
+          <div class="side-label" id="labelBefore">Original</div>
+          <div class="side-label" id="labelAfter">Converted</div>
+          <div id="divider">
+            <div id="handle">
+              <svg viewBox="0 0 24 24" fill="#111"><path d="M15 6l-6 6 6 6z"/></svg>
+              <svg viewBox="0 0 24 24" fill="#111"><path d="M9 6l6 6-6 6z"/></svg>
+            </div>
+          </div>
+        </div>
+        <div id="zoomBar">
+          <button id="zoomOut" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="M5 12h14"/></svg></button>
+          <span id="zoomVal">100%</span>
+          <button id="zoomIn" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+      </div>
+
+      <div id="sidebar">
+        <div id="fileRow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l4.5-6 3.5 4.5 2.5-3L20 16"/><rect x="3" y="4" width="18" height="16" rx="2.5"/></svg>
+          <span id="fileNameText">—</span>
+        </div>
+
+        <div class="panel-card">
+          <div class="field">
+            <label>Output format</label>
+            <div class="select-wrap">
+              <select id="formatSelect">
+                <option value="original">Original</option>
+                <option value="image/jpeg" selected>JPEG</option>
+                <option value="image/png">PNG</option>
+                <option value="image/webp">WebP</option>
+              </select>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </div>
+
+          <div class="field" id="qualityField">
+            <label>Quality</label>
+            <div class="quality-row">
+              <input type="range" id="qualitySlider" min="1" max="100" value="75">
+              <span class="quality-val" id="qualityVal">75</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card" id="statsBox">
+          <div class="stat-row"><span>Original size</span><b id="origSize">—</b></div>
+          <div class="stat-row"><span>Converted size</span><b id="newSize">—</b></div>
+          <div class="stat-divider"></div>
+          <div class="stat-row"><span>Dimensions</span><b id="dims">—</b></div>
+          <div id="pctBadge">—</div>
+        </div>
+
+        <div id="spinner"><div class="dot"></div><div class="dot"></div><div class="dot"></div>&nbsp;Encoding…</div>
+
+        <button id="downloadBtn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+          Download
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+(() => {
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const editor = document.getElementById('editor');
+  const newImageBtn = document.getElementById('newImageBtn');
+  const beforeImg = document.getElementById('beforeImg');
+  const afterImg = document.getElementById('afterImg');
+  const afterLayer = document.getElementById('afterLayer');
+  const divider = document.getElementById('divider');
+  const stage = document.getElementById('stage');
+  const formatSelect = document.getElementById('formatSelect');
+  const qualityField = document.getElementById('qualityField');
+  const qualitySlider = document.getElementById('qualitySlider');
+  const qualityVal = document.getElementById('qualityVal');
+  const origSizeEl = document.getElementById('origSize');
+  const newSizeEl = document.getElementById('newSize');
+  const dimsEl = document.getElementById('dims');
+  const pctBadge = document.getElementById('pctBadge');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const spinner = document.getElementById('spinner');
+  const zoomVal = document.getElementById('zoomVal');
+  const zoomIn = document.getElementById('zoomIn');
+  const zoomOut = document.getElementById('zoomOut');
+  const fileNameText = document.getElementById('fileNameText');
+
+  let originalFile = null;
+  let originalURL = null;
+  let originalImgEl = new Image();
+  let convertedBlob = null;
+  let zoom = 1;
+  let encodeToken = 0;
+
+  const fmtBytes = (b) => {
+    if (b < 1024) return b + ' B';
+    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+    return (b / (1024 * 1024)).toFixed(2) + ' MB';
+  };
+
+  const extForType = (type) => ({
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+  }[type] || 'png');
+
+  // ---- Upload handling ----
+  dropZone.addEventListener('click', () => fileInput.click());
+  ['dragenter', 'dragover'].forEach(evt =>
+    dropZone.addEventListener(evt, (e) => { e.preventDefault(); dropZone.classList.add('drag'); })
+  );
+  ['dragleave', 'drop'].forEach(evt =>
+    dropZone.addEventListener(evt, (e) => { e.preventDefault(); dropZone.classList.remove('drag'); })
+  );
+  dropZone.addEventListener('drop', (e) => {
+    const f = e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+  fileInput.addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if (f) loadFile(f);
+  });
+  newImageBtn.addEventListener('click', () => {
+    fileInput.value = '';
+    fileInput.click();
+  });
+
+  function loadFile(file) {
+    if (!file.type.startsWith('image/')) return;
+    originalFile = file;
+    if (originalURL) URL.revokeObjectURL(originalURL);
+    originalURL = URL.createObjectURL(file);
+    beforeImg.src = originalURL;
+    fileNameText.textContent = file.name;
+
+    originalImgEl = new Image();
+    originalImgEl.onload = () => {
+      dimsEl.textContent = `${originalImgEl.naturalWidth} × ${originalImgEl.naturalHeight}`;
+      origSizeEl.textContent = fmtBytes(file.size);
+      dropZone.style.display = 'none';
+      editor.classList.add('active');
+      newImageBtn.style.display = 'inline-flex';
+      zoom = 1; zoomVal.textContent = '100%'; stage.style.transform = 'scale(1)';
+      setDivider(50);
+      runConvert();
+    };
+    originalImgEl.src = originalURL;
+  }
+
+  // ---- Divider drag ----
+  function setDivider(pct) {
+    pct = Math.max(0, Math.min(100, pct));
+    divider.style.left = pct + '%';
+    afterLayer.style.clipPath = `inset(0 0 0 ${pct}%)`;
+  }
+  let dragging = false;
+  divider.addEventListener('pointerdown', (e) => { dragging = true; e.preventDefault(); });
+  window.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const rect = stage.getBoundingClientRect();
+    const pct = ((e.clientX - rect.left) / rect.width) * 100;
+    setDivider(pct);
+  });
+  window.addEventListener('pointerup', () => dragging = false);
+
+  // ---- Zoom ----
+  function applyZoom() {
+    zoomVal.textContent = Math.round(zoom * 100) + '%';
+    stage.style.transform = `scale(${zoom})`;
+  }
+  zoomIn.addEventListener('click', () => { zoom = Math.min(4, zoom + 0.25); applyZoom(); });
+  zoomOut.addEventListener('click', () => { zoom = Math.max(0.25, zoom - 0.25); applyZoom(); });
+
+  // ---- Format / quality controls ----
+  formatSelect.addEventListener('change', () => {
+    qualityField.style.display = formatSelect.value === 'image/png' || formatSelect.value === 'original' ? 'none' : 'flex';
+    runConvert();
+  });
+  qualitySlider.addEventListener('input', () => {
+    qualityVal.textContent = qualitySlider.value;
+    runConvert();
+  });
+
+  // ---- Conversion ----
+  function runConvert() {
+    if (!originalImgEl.src) return;
+    const token = ++encodeToken;
+    spinner.classList.add('on');
+    downloadBtn.disabled = true;
+
+    if (formatSelect.value === 'original') {
+      afterImg.src = originalURL;
+      convertedBlob = originalFile;
+      finishConvert(token, originalFile);
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = originalImgEl.naturalWidth;
+    canvas.height = originalImgEl.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (formatSelect.value === 'image/jpeg') {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.drawImage(originalImgEl, 0, 0);
+
+    const quality = Number(qualitySlider.value) / 100;
+    canvas.toBlob((blob) => {
+      if (token !== encodeToken || !blob) return;
+      const url = URL.createObjectURL(blob);
+      afterImg.src = url;
+      convertedBlob = blob;
+      finishConvert(token, blob);
+    }, formatSelect.value, quality);
+  }
+
+  function finishConvert(token, blobOrFile) {
+    if (token !== encodeToken) return;
+    spinner.classList.remove('on');
+    downloadBtn.disabled = false;
+    const newSize = blobOrFile.size;
+    newSizeEl.textContent = fmtBytes(newSize);
+    const origSize = originalFile.size;
+    const diff = ((newSize - origSize) / origSize) * 100;
+    const isGood = diff <= 0;
+    pctBadge.className = isGood ? 'good' : 'bad';
+    const arrowPath = isGood ? 'M12 5v14M19 12l-7 7-7-7' : 'M12 19V5M5 12l7-7 7 7';
+    pctBadge.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="${arrowPath}"/></svg> ${Math.abs(diff).toFixed(0)}% ${isGood ? 'smaller' : 'larger'}`;
+  }
+
+  downloadBtn.addEventListener('click', () => {
+    if (!convertedBlob) return;
+    const type = formatSelect.value === 'original' ? originalFile.type : formatSelect.value;
+    const ext = formatSelect.value === 'original'
+      ? (originalFile.name.split('.').pop() || 'img')
+      : extForType(type);
+    const baseName = originalFile.name.replace(/\.[^/.]+$/, '');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(convertedBlob);
+    a.download = `${baseName}-converted.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+})();
+</script>
+</body>
+</html>

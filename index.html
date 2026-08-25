@@ -324,10 +324,20 @@
 
   /* ---- Responsive ---- */
   @media (max-width: 760px) {
+    main { overflow-y: auto; -webkit-overflow-scrolling: touch; }
     .editor { flex-direction: column; }
-    .sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border-soft); }
-    .stage-wrap, #videoStageWrap { padding: 16px; min-height: 260px; }
+    .sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border-soft); flex: none; }
+    .stage-wrap, #videoStageWrap { padding: 16px; height: 42vh; min-height: 220px; flex: none; }
     .brand-text p { display: none; }
+  }
+
+  @media (max-width: 560px) {
+    header { padding: 10px 14px; gap: 8px; }
+    .brand-text { display: none; }
+    .tab-btn { padding: 7px 11px; }
+    #newFileBtn { width: 36px; height: 36px; padding: 0; justify-content: center; }
+    #newFileBtn svg { width: 16px; height: 16px; }
+    #newFileBtnLabel { display: none; }
   }
 </style>
 </head>

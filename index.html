@@ -323,10 +323,17 @@
   .stale-hint.show { display: block; }
 
   /* ---- Responsive ---- */
+  /* Below 760px we drop the fixed-viewport app-shell (100vh + overflow:hidden) entirely —
+     it's unreliable on mobile browsers (dynamic address-bar resizing, nested flex overflow
+     quirks). Instead the whole page just scrolls normally like any other website. */
   @media (max-width: 760px) {
-    main { overflow-y: auto; -webkit-overflow-scrolling: touch; }
-    .editor { flex-direction: column; }
-    .sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border-soft); flex: none; }
+    html, body { height: auto; overflow: visible; }
+    #app { height: auto; min-height: 100vh; }
+    header { position: sticky; top: 0; }
+    main { overflow: visible; }
+    .tool-panel.active { display: block; }
+    .editor.active { display: flex; flex-direction: column; }
+    .sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border-soft); flex: none; overflow-y: visible; }
     .stage-wrap, #videoStageWrap { padding: 16px; height: 42vh; min-height: 220px; flex: none; }
     .brand-text p { display: none; }
   }

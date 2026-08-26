@@ -265,6 +265,8 @@
   .secondary-btn:disabled { opacity: .4; cursor: not-allowed; }
   .secondary-btn svg { width: 15px; height: 15px; }
 
+  .action-bar { display: flex; flex-direction: column; gap: 10px; }
+
   #spinner {
     display: none; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); font-weight: 600;
     justify-content: center;
@@ -333,9 +335,19 @@
     main { overflow: visible; }
     .tool-panel.active { display: block; }
     .editor.active { display: flex; flex-direction: column; }
-    .sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border-soft); flex: none; overflow-y: visible; }
+    .sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border-soft); flex: none; overflow-y: visible; padding-bottom: 150px; }
     .stage-wrap, #videoStageWrap { padding: 16px; height: 42vh; min-height: 220px; flex: none; }
     .brand-text p { display: none; }
+
+    /* Pin the primary action to the bottom of the screen so it's always visible —
+       no need to discover that the page scrolls further to find it. */
+    .action-bar {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+      background: rgba(19,19,23,0.97); backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border-soft);
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      box-shadow: 0 -8px 24px rgba(0,0,0,0.35);
+    }
   }
 
   @media (max-width: 560px) {
@@ -454,10 +466,12 @@
 
           <div id="spinner"><div class="dot"></div><div class="dot"></div><div class="dot"></div>&nbsp;Encoding…</div>
 
-          <button class="primary-btn" id="downloadBtn" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
-            Download
-          </button>
+          <div class="action-bar">
+            <button class="primary-btn" id="downloadBtn" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+              Download
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -549,15 +563,17 @@
             <div class="progress-pct" id="vProgressPct" style="text-align:center;margin-top:6px">Compressing… 0%</div>
           </div>
 
-          <button class="primary-btn" id="compressBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-            Compress video
-          </button>
+          <div class="action-bar">
+            <button class="primary-btn" id="compressBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+              Compress video
+            </button>
 
-          <button class="secondary-btn" id="vDownloadBtn" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
-            Download
-          </button>
+            <button class="secondary-btn" id="vDownloadBtn" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+              Download
+            </button>
+          </div>
         </div>
       </div>
     </section>
